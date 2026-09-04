@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>A Jornada de Bone: Em Busca de Tsuyshi</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <main id="game-wrapper">
+        <!-- Barra Superior / HUD -->
+        <header id="hud" class="hud-container">
+            <div class="hud-left">
+                <!-- Indicador de Fase -->
+                <div class="hud-item stage-box" title="Fase Atual da Campanha">
+                    <span class="hud-label">FASE</span>
+                    <span id="hud-stage" class="stage-number">1/10</span>
+                </div>
+
+                <!-- Vidas -->
+                <div class="hud-item lives-box" title="Vidas Restantes">
+                    <span class="hud-label">VIDAS:</span>
+                    <div id="lives-display" class="hearts-container">
+                        <span class="heart active">❤️</span>
+                        <span class="heart active">❤️</span>
+                        <span class="heart active">❤️</span>
+                    </div>
+                </div>
+
+                <!-- Açaís Coletados -->
+                <div class="hud-item score-box" title="Pontos / Açaís">
+                    <span class="icon-acai">🍇</span>
+                    <span id="hud-score">0</span>
+                </div>
+
+                <!-- Barra de Restauração da Humanidade -->
+                <div class="hud-item humanity-box" title="Progresso da Restauração Humana (Requer 100% para despertar Tsuyshi)">
+                    <span id="humanity-icon" class="humanity-icon">💀</span>
+                    <div class="humanity-bar-bg">
+                        <div id="humanity-bar-fill" class="humanity-bar-fill"></div>
+                    </div>
+                    <span id="humanity-text" class="humanity-text">0%</span>
+                </div>
+
+                <!-- Indicador de Power-up Guaraná -->
+                <div id="buff-indicator" class="hud-item buff-box hidden" title="Poder do Guaraná Ativo!">
+                    <span class="icon-buff">⚡ GUARANÁ</span>
+                    <span id="buff-timer">8s</span>
+                </div>
+            </div>
+
+            <!-- Progresso na Fase Atual -->
+            <div class="hud-center">
+                <div class="progress-track" title="Progresso até o Portal ou Altar da Fase">
+                    <span class="progress-icon start-icon">🏃</span>
+                    <div class="progress-bar-bg">
+                        <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                        <div id="progress-pin" class="progress-pin">🦴</div>
+                    </div>
+                    <span id="hud-goal-icon" class="progress-icon end-icon">🌀</span>
+                </div>
+            </div>
+
+            <!-- Controles de Áudio e Pausa -->
+            <div class="hud-right">
+                <button id="btn-sound-toggle" class="icon-button" title="Ligar/Desligar Áudio" aria-label="Alternar Áudio">
+                    🔊
+                </button>
+                <button id="btn-pause" class="icon-button" title="Pausar (ESC ou P)" aria-label="Pausar Jogo">
+                    ⏸️
+                </button>
+            </div>
+        </header>
+
+        <!-- Container do Canvas do Jogo -->
+        <div id="canvas-container">
+            <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+            <!-- Barra de Vida dos Chefes (Boss HUD) -->
+            <div id="boss-hud" class="boss-hud-container hidden">
+                <div class="boss-title-row">
+                    <span class="boss-icon-skull">👹</span>
+                    <span id="boss-name" class="boss-name">BOTO TITÃ DO PÂNTANO</span>
+                    <span class="boss-icon-skull">👹</span>
+                </div>
+                <div class="boss-hp-bar-bg">
+                    <div id="boss-hp-bar-fill" class="boss-hp-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Controles Virtuais Touch para Celular / Telas Sensíveis ao Toque -->
+            <div id="touch-controls" class="touch-controls-layer">
+                <div class="touch-dpad">
+                    <button id="touch-btn-left" class="touch-btn" aria-label="Mover para Esquerda">◀</button>
+                    <button id="touch-btn-right" class="touch-btn" aria-label="Mover para Direita">▶</button>
+                </div>
+                <div class="touch-actions">
+                    <button id="touch-btn-jump" class="touch-btn touch-btn-jump" aria-label="Pular">⤒</button>
+                </div>
+            </div>
+
+            <!-- Menu Principal Overlay Reformulado -->
+            <section id="main-menu" class="overlay-screen active">
+                <div class="menu-card glass-panel hero-menu-card">
+                    <div class="title-badge">🌿 CAMPANHA COMPLETA: 10 FASES & 2 CHEFES 🌿</div>
+                    <h1 class="game-title">A JORNADA DE BONE</h1>
+                    <p class="game-subtitle">Em Busca da Princesa Tsuyshi & A Restauração Humana</p>
+                    
+                    <div class="menu-illustration">
+                        <span class="char-preview">💀 ➔ 🌿 ➔ 🧬 ➔ 🧑 ➔ 👑</span>
+                    </div>
+
+                    <!-- Indicador de Progresso Salvo -->
+                    <div id="save-status-box" class="save-status-box hidden">
+                        <span>Progresso Salvo: <strong id="save-stage-text">Fase 1/10</strong></span>
+                        <span>Recorde: <strong id="save-high-score">0 pts</strong></span>
+                    </div>
+
+                    <div class="mission-callout">
+                        📜 <strong>Missão Sagrada</strong>: Viaje por <strong>10 fases da Amazônia</strong>, derrote os <strong>2 Chefes Guardiões</strong> (Fase 5 e Fase 10) e colete as <strong>Essências de Humanidade (✨)</strong> para atingir <strong>100% de Humanidade</strong> e libertar a Princesa Tsuyshi!
+                    </div>
+
+                    <div class="menu-buttons">
+                        <button id="btn-continue-game" class="btn-primary btn-highlight hidden">CONTINUAR JORNADA ➔</button>
+                        <button id="btn-start-game" class="btn-primary">NOVA JORNADA</button>
+                        <button id="btn-select-stage" class="btn-secondary">🗺️ SELEÇÃO DE FASES (10 FASES)</button>
+                        <div class="menu-btn-row">
+                            <button id="btn-how-to-play" class="btn-secondary">COMO JOGAR</button>
+                            <button id="btn-story" class="btn-secondary">A LENDA</button>
+                        </div>
+                        <button id="btn-menu-reset-all" class="btn-danger-outline">⚠️ ZERAR PROGRESSO (DO ZERO)</button>
+                    </div>
+
+                    <div class="controls-hint">
+                        <small>PC: <strong>A/D</strong> ou <strong>← →</strong> para mover | <strong>Espaço</strong> para pular | Celular: <strong>Botões na tela</strong></small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Modal: Seleção de Fases (10 Fases) -->
+            <div id="modal-select-stage" class="modal-overlay hidden">
+                <div class="modal-card glass-panel stage-select-modal">
+                    <header class="modal-header">
+                        <h3>MAPA DA AMAZÔNIA: SELEÇÃO DE FASES</h3>
+                        <button id="btn-close-stages" class="btn-close">&times;</button>
+                    </header>
+                    <div class="modal-body">
+                        <p class="stage-select-info">Escolha qualquer fase já desbloqueada em sua jornada para jogar ou colher essências pendentes:</p>
+                        <div id="stages-grid" class="stages-grid">
+                            <!-- Gerado dinamicamente via game.js -->
+                        </div>
+                    </div>
+                    <footer class="modal-footer">
+                        <button id="btn-back-from-stages" class="btn-secondary">VOLTAR AO MENU</button>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- Menu de Pausa Overlay -->
+            <section id="pause-menu" class="overlay-screen hidden">
+                <div class="menu-card glass-panel">
+                    <h2 class="menu-title">JOGO PAUSADO</h2>
+                    <p class="pause-status">Descanse nas sombras da floresta amazônica...</p>
+
+                    <div class="pause-stats">
+                        <div>Fase: <strong id="pause-stage">1/10</strong></div>
+                        <div>Humanidade: <strong id="pause-humanity">0%</strong></div>
+                    </div>
+
+                    <div class="menu-buttons">
+                        <button id="btn-resume" class="btn-primary">CONTINUAR (ESC)</button>
+                        <button id="btn-restart-level" class="btn-secondary">REINICIAR FASE</button>
+                        <button id="btn-pause-select-stage" class="btn-secondary">🗺️ SELEÇÃO DE FASES</button>
+                        <button id="btn-pause-sound" class="btn-secondary">ÁUDIO: ATIVADO</button>
+                        <button id="btn-quit-to-menu" class="btn-danger">MENU PRINCIPAL</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tela de Conclusão de Fase (Transição) -->
+            <section id="stage-clear-screen" class="overlay-screen hidden">
+                <div class="menu-card glass-panel stage-clear-card">
+                    <div class="portal-badge">🌀 PORTAL ATIVADO!</div>
+                    <h2 id="stage-clear-title" class="menu-title text-gold">FASE 1 CONCLUÍDA!</h2>
+                    <p id="stage-clear-desc" class="stage-clear-desc">Você superou as águas revoltas do rio!</p>
+
+                    <div class="stage-stats-box">
+                        <div class="stat-row">
+                            <span>Humanidade Atual:</span>
+                            <strong id="stage-clear-humanity" class="text-green">10%</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Pontos Totais:</span>
+                            <strong id="stage-clear-score">0</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Forma do Guerreiro:</span>
+                            <strong id="stage-clear-form" class="text-gold">Esqueleto Amaldiçoado</strong>
+                        </div>
+                    </div>
+
+                    <div class="menu-buttons">
+                        <button id="btn-next-stage" class="btn-primary">AVANÇAR PARA A PRÓXIMA FASE ➔</button>
+                        <button id="btn-clear-to-stages" class="btn-secondary">MAPA DE FASES</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Modal: Humanidade Incompleta (Se chegar ao Altar na Fase 10 sem 100%) -->
+            <section id="incomplete-humanity-screen" class="overlay-screen hidden">
+                <div class="menu-card glass-panel warning-card">
+                    <div class="warning-icon">🔮⚡</div>
+                    <h2 class="menu-title text-danger">O ALTAR PERMANECE SELADO!</h2>
+                    <p class="warning-text">
+                        A Princesa Tsuyshi olha para você através do domo sagrado:<br>
+                        <em>"Bravo guerreiro, sua alma ainda carrega a maldição das sombras! Você precisa de <strong>100% de Humanidade</strong> para que o ritual sagrado possa acontecer!"</em>
+                    </p>
+
+                    <div class="humanity-status-warning">
+                        Sua Humanidade Atual: <strong id="warn-humanity-pct" class="text-danger">90%</strong>
+                        <div class="humanity-bar-bg" style="margin-top: 8px; width: 100%;">
+                            <div id="warn-bar-fill" class="humanity-bar-fill" style="width: 90%;"></div>
+                        </div>
+                    </div>
+
+                    <p class="small-hint">Use a <strong>Seleção de Fases</strong> para revisitar fases anteriores e colher as <strong>Essências de Humanidade (✨)</strong> que ficaram para trás!</p>
+
+                    <div class="menu-buttons">
+                        <button id="btn-retry-stage10" class="btn-primary">EXPLORAR A FASE 10 NOVAMENTE</button>
+                        <button id="btn-warn-select-stage" class="btn-secondary">🗺️ IR PARA A SELEÇÃO DE FASES</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tela de Game Over -->
+            <section id="game-over-screen" class="overlay-screen hidden">
+                <div class="menu-card glass-panel defeat-card">
+                    <h2 class="menu-title text-danger">BONE TOMBOU!</h2>
+                    <p class="defeat-text">Os perigos da selva foram implacáveis desta vez.</p>
+                    
+                    <div class="stats-summary">
+                        <div>Fase: <strong id="go-stage">1/10</strong></div>
+                        <div>Humanidade: <strong id="go-humanity">0%</strong></div>
+                        <div>Açaís: <strong id="go-score">0</strong></div>
+                    </div>
+
+                    <div class="menu-buttons">
+                        <button id="btn-retry-checkpoint" class="btn-primary">RENASCER NO CHECKPOINT</button>
+                        <button id="btn-restart-game" class="btn-secondary">RECOMEÇAR FASE</button>
+                        <button id="btn-go-to-stages" class="btn-secondary">MAPA DE FASES</button>
+                        <button id="btn-go-to-menu" class="btn-danger">MENU PRINCIPAL</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tela de Vitória Suprema (Humanidade 100% Restaurada) -->
+            <section id="victory-screen" class="overlay-screen hidden">
+                <div class="menu-card glass-panel victory-card">
+                    <div class="crown-icon">👑✨🧑</div>
+                    <div class="title-badge" style="background: rgba(46, 204, 113, 0.2); border-color: #2ecc71;">CAMPANHA CONCLUÍDA COM SUCESSO!</div>
+                    <h2 class="menu-title text-gold">A MALDIÇÃO FOI QUEBRADA!</h2>
+                    <p class="victory-text">
+                        Com os dois Chefes Guardiões derrotados e todas as 20 Essências Sagradas reunidas, a Princesa Tsuyshi realizou o ritual supremo. A carcaça de ossos se desfez em luz celestial e o lendário guerreiro amazônico despertou em carne, vida e liberdade plena!
+                    </p>
+
+                    <div class="victory-stats">
+                        <div class="stat-badge">
+                            <span class="stat-label">PONTUAÇÃO FINAL</span>
+                            <span id="vic-score" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-label">TEMPO DE JORNADA</span>
+                            <span id="vic-time" class="stat-value">00:00</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-label">HUMANIDADE</span>
+                            <span class="stat-value text-green">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="menu-buttons">
+                        <button id="btn-play-again" class="btn-primary">JOGAR NOVAMENTE</button>
+                        <button id="btn-vic-to-stages" class="btn-secondary">MAPA DE FASES</button>
+                        <button id="btn-vic-reset-all" class="btn-danger">🔄 RECOMEÇAR TUDO DO ZERO</button>
+                        <button id="btn-vic-to-menu" class="btn-secondary">MENU PRINCIPAL</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Modal: Como Jogar -->
+            <div id="modal-how-to-play" class="modal-overlay hidden">
+                <div class="modal-card glass-panel">
+                    <header class="modal-header">
+                        <h3>COMO JOGAR: GUIA COMPLETO</h3>
+                        <button id="btn-close-how" class="btn-close">&times;</button>
+                    </header>
+                    <div class="modal-body">
+                        <ul class="guide-list">
+                            <li>📱 <strong>No Celular</strong>: Use os botões virtuais <strong>◀ ▶</strong> no canto esquerdo e <strong>⤒</strong> (Pular) no canto direito. Suporta multitoque simultâneo!</li>
+                            <li>💻 <strong>No Computador</strong>: Use <span class="key-badge">A</span> <span class="key-badge">D</span> ou <span class="key-badge">←</span> <span class="key-badge">→</span> para mover e <span class="key-badge">Espaço</span> / <span class="key-badge">W</span> para pular.</li>
+                            <li><span class="key-badge">ESC</span> ou <span class="key-badge">P</span> : Pausar a qualquer momento.</li>
+                            <li>👹 <strong>2 Batalhas de Chefes</strong>:
+                                <br>• <strong>Fase 5</strong>: Boto Titã do Pântano (salte na cabeça dele para vencê-lo).
+                                <br>• <strong>Fase 10</strong>: A Sombra da Maldição (destrua o espírito que amaldiçoou Bone antes do Altar!).
+                            </li>
+                            <li>✨ <strong>Essências de Humanidade (2 por fase = 10% por fase)</strong>: Colete todas as 20 para atingir 100% e despertar a Princesa Tsuyshi!</li>
+                            <li>🧬 <strong>Metamorfose Visual</strong>: Bone se transforma de Esqueleto ➔ Músculo ➔ Guerreiro Tribal ➔ Humano Pleno.</li>
+                            <li>🔄 <strong>Reinício Total</strong>: Ao zerar o jogo ou pelo menu, você pode resetar o progresso completo e reviver a saga do zero!</li>
+                        </ul>
+                    </div>
+                    <footer class="modal-footer">
+                        <button id="btn-ok-how" class="btn-primary">ENTENDI!</button>
+                    </footer>
+                </div>
+            </div>
+
+            <!-- Modal: A Lenda -->
+            <div id="modal-story" class="modal-overlay hidden">
+                <div class="modal-card glass-panel">
+                    <header class="modal-header">
+                        <h3>A LENDA DAS 10 TERRAS & OS GUARDIÕES</h3>
+                        <button id="btn-close-story" class="btn-close">&times;</button>
+                    </header>
+                    <div class="modal-body story-content">
+                        <p>Diz a lenda que o grande guerreiro protetor da Amazônia foi amaldiçoado pelo espírito das trevas, aprisionado em ossos desprovidos de vida sob a identidade de <strong>Bone</strong>.</p>
+                        <p>Para recuperar sua humanidade, ele deve cruzar as 10 regiões sagradas, derrotar os dois titãs guardiões corrompidos (o <strong>Boto Titã</strong> e a <strong>Sombra da Maldição</strong>) e colher as 20 Essências de Humanidade.</p>
+                        <p>No topo do mundo amazônico, a <strong>Princesa Tsuyshi</strong> aguarda para coroar o renascimento humano daquele que libertou a floresta!</p>
+                    </div>
+                    <footer class="modal-footer">
+                        <button id="btn-ok-story" class="btn-primary">AVANÇAR</button>
+                    </footer>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra inferior com dicas e créditos -->
+        <footer class="game-footer">
+            <span id="footer-hint">Dica: No celular, toque nos botões virtuais na tela para se mover e pular!</span>
+            <span>A Jornada de Bone &copy; Edição Definitiva (Mobile & Chefes)</span>
+        </footer>
+    </main>
+
+    <script src="game.js"></script>
+</body>
+</html>
